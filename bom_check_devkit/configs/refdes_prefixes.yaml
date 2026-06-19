@@ -1,0 +1,33 @@
+# RefDes 前缀白名单。按优先级从长到短匹配，避免 TVS1 被识别成 T/V/S。
+prefixes:
+  - TVS
+  - ESD
+  - ANT
+  - LED
+  - BAT
+  - NTC
+  - FUSE
+  - FB
+  - TP
+  - SW
+  - ID
+  - JP
+  - CN
+  - J
+  - U
+  - R
+  - C
+  - L
+  - Q
+  - D
+  - Y
+  - X
+
+ignore_prefixes_by_default:
+  - TP      # 测试点默认 Info/Ignore
+  - ID      # Markpoint/Badmark 默认 Ignore
+
+valid_refdes_regex: "(?<![A-Za-z0-9_])({prefixes})([0-9]+[A-Za-z]?)(?![A-Za-z0-9_])"
+
+# 对于 PDF 粘连文本，例如 TVS1SMBJ6.5CA、C510uF/10V，允许从字符串开头提取 RefDes。
+embedded_refdes_regex: "({prefixes})([0-9]+[A-Za-z]?)"

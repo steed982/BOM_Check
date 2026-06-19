@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
+  <defs>
+    <style>
+      .bg { fill: #f4f6f8; }
+      .panel { fill: #ffffff; stroke: #d7e0dd; stroke-width: 1.2; }
+      .soft { fill: #eef7f4; stroke: #c8ddd6; stroke-width: 1.2; }
+      .ink { fill: #15211f; font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
+      .muted { fill: #60716d; font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
+      .green { fill: #0b6b5f; }
+      .greenText { fill: #0b6b5f; font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
+      .orange { fill: #b65c13; }
+      .red { fill: #b42318; }
+      .yellow { fill: #fff3bd; stroke: #efd272; stroke-width: 1; }
+      .blueLine { stroke: #2f6fed; stroke-width: 5; fill: none; }
+      .goldLine { stroke: #f0c600; stroke-width: 3; fill: none; }
+      .h1 { font-size: 30px; font-weight: 800; }
+      .h2 { font-size: 22px; font-weight: 800; }
+      .h3 { font-size: 18px; font-weight: 800; }
+      .body { font-size: 15px; }
+      .small { font-size: 13px; }
+      .tiny { font-size: 11px; }
+      .num { font-size: 34px; font-weight: 900; }
+      .btnText { fill: #ffffff; font-size: 16px; font-weight: 800; font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
+      .btnOutline { fill: #ffffff; stroke: #0b6b5f; stroke-width: 1.3; }
+      .outlineText { fill: #0b6b5f; font-size: 15px; font-weight: 800; font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
+      .shadow { filter: drop-shadow(0 1px 2px rgba(12, 24, 20, .08)); }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="980"/>
+
+  <text class="ink h1" x="42" y="50">BOM Check Web 改版示意</text>
+  <text class="muted body" x="42" y="78">主页面只做任务中心：上传、队列/完成状态、下载入口；明细审查全部新窗口打开。</text>
+
+  <!-- Main page -->
+  <rect class="panel shadow" x="40" y="112" width="940" height="810" rx="8"/>
+  <text class="ink h2" x="70" y="154">任务中心（主页面）</text>
+  <text class="muted body" x="70" y="182">不在主页面塞 PDF 或异常明细，避免小窗口里信息互相挤压。</text>
+
+  <rect class="soft" x="70" y="210" width="880" height="104" rx="8"/>
+  <text class="muted small" x="92" y="238">BOM Excel</text>
+  <rect class="panel" x="92" y="250" width="265" height="40" rx="6"/>
+  <text class="ink body" x="108" y="276">套打_物料清单...XLSX</text>
+  <text class="muted small" x="386" y="238">原理图 PDF</text>
+  <rect class="panel" x="386" y="250" width="245" height="40" rx="6"/>
+  <text class="ink body" x="402" y="276">BAT MB.pdf</text>
+  <rect class="green" x="675" y="246" width="150" height="48" rx="6"/>
+  <text class="btnText" x="713" y="277">提交检查</text>
+  <rect class="btnOutline" x="838" y="246" width="90" height="48" rx="6"/>
+  <text class="outlineText" x="866" y="277">刷新</text>
+
+  <text class="ink h3" x="70" y="358">当前队列</text>
+  <rect class="panel" x="70" y="378" width="880" height="150" rx="8"/>
+  <rect class="yellow" x="92" y="400" width="836" height="42" rx="6"/>
+  <text class="ink body" x="112" y="427">#20260619-153210</text>
+  <text class="orange body" x="340" y="427">运行中</text>
+  <text class="muted body" x="450" y="427">BAT MB.pdf · 已运行 00:18</text>
+  <text class="greenText body" x="770" y="427">前方 0 个</text>
+  <rect class="panel" x="92" y="456" width="836" height="42" rx="6"/>
+  <text class="ink body" x="112" y="483">#20260619-153225</text>
+  <text class="muted body" x="340" y="483">排队中</text>
+  <text class="muted body" x="450" y="483">A 项目原理图.pdf</text>
+  <text class="greenText body" x="770" y="483">前方 1 个</text>
+
+  <text class="ink h3" x="70" y="570">最近完成</text>
+  <rect class="panel" x="70" y="590" width="880" height="270" rx="8"/>
+  <text class="ink h3" x="94" y="625">BAT MB.pdf</text>
+  <text class="muted small" x="94" y="650">完成时间 15:29:56 · BOM 67 行 · PDF 位号 181</text>
+
+  <rect class="panel" x="94" y="675" width="150" height="82" rx="6"/>
+  <text class="num ink" x="116" y="718">2</text>
+  <text class="muted small" x="116" y="742">错误</text>
+  <rect class="panel" x="260" y="675" width="150" height="82" rx="6"/>
+  <text class="num ink" x="282" y="718">5</text>
+  <text class="muted small" x="282" y="742">警告</text>
+  <rect class="panel" x="426" y="675" width="150" height="82" rx="6"/>
+  <text class="num ink" x="448" y="718">17</text>
+  <text class="muted small" x="448" y="742">信息</text>
+  <rect class="panel" x="592" y="675" width="150" height="82" rx="6"/>
+  <text class="num ink" x="614" y="718">24</text>
+  <text class="muted small" x="614" y="742">异常合计</text>
+
+  <rect class="green" x="94" y="790" width="126" height="44" rx="6"/>
+  <text class="btnText" x="124" y="818">查看明细</text>
+  <rect class="btnOutline" x="236" y="790" width="126" height="44" rx="6"/>
+  <text class="outlineText" x="266" y="818">下载页面</text>
+  <rect class="btnOutline" x="378" y="790" width="126" height="44" rx="6"/>
+  <text class="outlineText" x="408" y="818">下载 PDF</text>
+  <rect class="btnOutline" x="520" y="790" width="140" height="44" rx="6"/>
+  <text class="outlineText" x="548" y="818">下载 Excel</text>
+  <rect class="btnOutline" x="676" y="790" width="126" height="44" rx="6"/>
+  <text class="outlineText" x="704" y="818">下载 JSON</text>
+
+  <!-- Detail page -->
+  <rect class="panel shadow" x="1020" y="112" width="540" height="810" rx="8"/>
+  <text class="ink h2" x="1050" y="154">明细页（新窗口）</text>
+  <text class="muted body" x="1050" y="182">点击主页面“查看明细”后打开，空间只服务审查。</text>
+
+  <rect class="soft" x="1050" y="210" width="480" height="70" rx="8"/>
+  <text class="ink h3" x="1070" y="239">BAT MB.pdf</text>
+  <text class="muted small" x="1070" y="264">错误 2 · 警告 5 · 可点击异常定位到图纸位置</text>
+
+  <rect class="panel" x="1050" y="300" width="480" height="248" rx="8"/>
+  <rect class="yellow" x="1070" y="320" width="440" height="54" rx="6"/>
+  <text class="ink body" x="1090" y="343">ESD9 · 重复位号</text>
+  <text class="greenText small" x="1090" y="364">点击定位 · 第 4 页</text>
+  <rect class="panel" x="1070" y="388" width="440" height="54" rx="6"/>
+  <text class="ink body" x="1090" y="411">TVS1 · TVS 型号不一致</text>
+  <text class="greenText small" x="1090" y="432">点击定位 · 第 5 页</text>
+  <rect class="panel" x="1070" y="456" width="440" height="54" rx="6"/>
+  <text class="ink body" x="1090" y="479">C148 · PDF-only 疑似漏料</text>
+  <text class="greenText small" x="1090" y="500">点击定位 · 第 5 页</text>
+
+  <rect class="panel" x="1050" y="568" width="480" height="300" rx="8"/>
+  <text class="ink h3" x="1070" y="598">定位高亮图</text>
+  <text class="muted small" x="1200" y="598">ESD9 · 第 4 页 · 蓝黄框高亮</text>
+  <rect x="1070" y="620" width="440" height="220" rx="4" fill="#ffffff" stroke="#d7e0dd"/>
+  <path d="M1100 665 H1240 V725 H1100 Z" stroke="#915c20" stroke-width="2" fill="none"/>
+  <path d="M1170 710 H1350 V735 H1170 Z" stroke="#6d75d8" stroke-width="2" fill="none"/>
+  <path d="M1368 720 H1460 V780 H1368 Z" stroke="#0e8f4d" stroke-width="2" fill="none"/>
+  <rect class="blueLine" x="1392" y="734" width="44" height="30"/>
+  <rect class="goldLine" x="1388" y="730" width="52" height="38"/>
+  <text class="greenText tiny" x="1395" y="754">ESD9</text>
+  <rect x="1360" y="805" width="110" height="22" rx="3" fill="#ffefef" stroke="#c53b31"/>
+  <text class="red tiny" x="1368" y="820">物料表重复</text>
+
+  <rect class="green" x="1050" y="888" width="120" height="44" rx="6"/>
+  <text class="btnText" x="1080" y="916">打开 PDF</text>
+  <rect class="btnOutline" x="1186" y="888" width="120" height="44" rx="6"/>
+  <text class="outlineText" x="1216" y="916">导出页面</text>
+  <rect class="btnOutline" x="1322" y="888" width="120" height="44" rx="6"/>
+  <text class="outlineText" x="1352" y="916">下载 Excel</text>
+</svg>

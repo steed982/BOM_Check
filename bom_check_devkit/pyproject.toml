@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bomcheck-toolkit"
+version = "0.1.0"
+description = "BOM to schematic PDF reference designator checker and annotator"
+requires-python = ">=3.10"
+dependencies = [
+  "pandas>=2.0.0",
+  "openpyxl>=3.1.0",
+  "PyMuPDF>=1.23.0",
+  "PyYAML>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0", "ruff>=0.5.0"]
+
+[project.scripts]
+bomcheck = "bomcheck_toolkit.cli:main"
+bomcheck-web = "bomcheck_toolkit.webapp:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

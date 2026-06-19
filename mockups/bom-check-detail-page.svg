@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="920" viewBox="0 0 1400 920">
+  <defs>
+    <style>
+      .bg { fill: #f4f6f8; }
+      .panel { fill: #ffffff; stroke: #d7e0dd; stroke-width: 1.2; }
+      .soft { fill: #eef7f4; stroke: #c8ddd6; stroke-width: 1.2; }
+      .yellow { fill: #fff3bd; stroke: #efd272; stroke-width: 1; }
+      .ink { fill: #15211f; font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
+      .muted { fill: #60716d; font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
+      .greenText { fill: #0b6b5f; font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
+      .green { fill: #0b6b5f; }
+      .red { fill: #b42318; font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
+      .h1 { font-size: 30px; font-weight: 800; }
+      .h2 { font-size: 22px; font-weight: 800; }
+      .h3 { font-size: 18px; font-weight: 800; }
+      .body { font-size: 15px; }
+      .small { font-size: 13px; }
+      .tiny { font-size: 11px; }
+      .btnText { fill: #ffffff; font-size: 15px; font-weight: 800; font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
+      .btnOutline { fill: #ffffff; stroke: #0b6b5f; stroke-width: 1.3; }
+      .outlineText { fill: #0b6b5f; font-size: 14px; font-weight: 800; font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
+      .blueLine { stroke: #2f6fed; stroke-width: 5; fill: none; }
+      .goldLine { stroke: #f0c600; stroke-width: 3; fill: none; }
+    </style>
+  </defs>
+  <rect class="bg" width="1400" height="920"/>
+  <text class="ink h1" x="40" y="54">异常明细页（新窗口）</text>
+  <text class="muted body" x="40" y="84">从主页面点击“查看明细”打开；这里才放异常列表、定位图、完整 PDF/Excel 下载。</text>
+
+  <rect class="soft" x="40" y="116" width="1320" height="72" rx="8"/>
+  <text class="ink h2" x="64" y="148">BAT MB.pdf</text>
+  <text class="muted body" x="64" y="174">错误 2 · 警告 5 · 信息 17 · 共 24 个异常</text>
+  <rect class="green" x="900" y="132" width="108" height="40" rx="6"/>
+  <text class="btnText" x="928" y="158">打开 PDF</text>
+  <rect class="btnOutline" x="1024" y="132" width="108" height="40" rx="6"/>
+  <text class="outlineText" x="1052" y="158">下载页面</text>
+  <rect class="btnOutline" x="1148" y="132" width="98" height="40" rx="6"/>
+  <text class="outlineText" x="1173" y="158">PDF</text>
+  <rect class="btnOutline" x="1260" y="132" width="78" height="40" rx="6"/>
+  <text class="outlineText" x="1281" y="158">Excel</text>
+
+  <rect class="panel" x="40" y="214" width="500" height="638" rx="8"/>
+  <text class="ink h3" x="64" y="248">异常列表</text>
+  <text class="muted small" x="64" y="272">点击行后右侧定位图同步高亮</text>
+  <rect class="yellow" x="64" y="296" width="452" height="74" rx="6"/>
+  <text class="ink body" x="86" y="322">ESD9 · DUPLICATE_STANDARD_REFDES</text>
+  <text class="muted small" x="86" y="346">同一位号出现在多个标准件 BOM 行</text>
+  <text class="greenText small" x="86" y="365">点击定位 · 第 4 页</text>
+  <rect class="panel" x="64" y="384" width="452" height="74" rx="6"/>
+  <text class="ink body" x="86" y="410">TVS1 · CRITICAL_TVS_MISMATCH</text>
+  <text class="muted small" x="86" y="434">TVS 型号或关键参数与 PDF 不一致</text>
+  <text class="greenText small" x="86" y="453">点击定位 · 第 5 页</text>
+  <rect class="panel" x="64" y="472" width="452" height="74" rx="6"/>
+  <text class="ink body" x="86" y="498">C148 · PDF_ONLY_SUSPECT</text>
+  <text class="muted small" x="86" y="522">PDF 有该位号，但 BOM 中没有</text>
+  <text class="greenText small" x="86" y="541">点击定位 · 第 5 页</text>
+  <rect class="panel" x="64" y="560" width="452" height="74" rx="6"/>
+  <text class="ink body" x="86" y="586">R29 · VALUE_MISMATCH</text>
+  <text class="muted small" x="86" y="610">BOM 与 PDF 附近文本可能不一致</text>
+  <text class="greenText small" x="86" y="629">点击定位 · 第 4 页</text>
+
+  <rect class="panel" x="574" y="214" width="786" height="638" rx="8"/>
+  <text class="ink h3" x="600" y="248">定位高亮图</text>
+  <text class="muted small" x="720" y="248">ESD9 · 第 4 页 · 蓝黄框高亮</text>
+  <rect x="600" y="276" width="734" height="532" rx="4" fill="#ffffff" stroke="#d7e0dd"/>
+  <path d="M650 360 H880 V450 H650 Z" stroke="#915c20" stroke-width="2" fill="none"/>
+  <path d="M770 430 H1080 V470 H770 Z" stroke="#6d75d8" stroke-width="2" fill="none"/>
+  <path d="M1095 450 H1250 V555 H1095 Z" stroke="#0e8f4d" stroke-width="2" fill="none"/>
+  <rect class="blueLine" x="1142" y="474" width="70" height="46"/>
+  <rect class="goldLine" x="1135" y="467" width="84" height="60"/>
+  <text class="greenText body" x="1152" y="503">ESD9</text>
+  <rect x="1030" y="620" width="190" height="56" rx="4" fill="#ffefef" stroke="#c53b31"/>
+  <text class="red small" x="1046" y="644">物料表重复</text>
+  <text class="red small" x="1046" y="666">BOM 行 25 / 85</text>
+</svg>

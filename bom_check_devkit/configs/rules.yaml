@@ -1,0 +1,94 @@
+severity:
+  error: 3
+  warning: 2
+  info: 1
+  ignore: 0
+
+nc_keywords:
+  - NC
+  - DNP
+  - DNI
+  - OPEN
+  - NM
+  - Not Mount
+  - Do Not Mount
+  - 不贴
+  - 空贴
+  - 选贴
+  - 预留
+
+pdf_only_classification:
+  testpoint_prefixes: ["TP"]
+  markpoint_prefixes: ["ID"]
+  nc_context_margin:
+    x: 80
+    y: 60
+
+bom_columns_candidates:
+  refdes: ["位号", "位置号", "RefDes", "Reference", "Designator", "REFDES"]
+  value: ["规格型号", "规格", "参数", "Value", "Description", "描述"]
+  mpn: ["厂商规格型号", "厂商型号", "Manufacturer PN", "MPN", "物料编码", "料号"]
+  qty: ["数量", "Qty", "QTY"]
+  substitute: ["子项类型", "类型", "替代", "替代料", "是否替代", "Substitute", "ALT"]
+  remark: ["物料备注", "备注", "Remark", "Comment"]
+
+rules:
+  - id: BOM_ONLY_REFDES
+    title: BOM 位号在 PDF 中找不到
+    severity: error
+    enabled: true
+
+  - id: PDF_ONLY_SUSPECT
+    title: PDF 位号不在 BOM 中，且没有 NC/DNP/TP/Mark 证据
+    severity: warning
+    enabled: true
+
+  - id: PDF_ONLY_NC
+    title: PDF 位号不在 BOM 中，但附近标了 NC/DNP/不贴
+    severity: info
+    enabled: true
+
+  - id: PDF_ONLY_TESTPOINT
+    title: 测试点不在 BOM 中
+    severity: ignore
+    enabled: true
+
+  - id: PDF_ONLY_MARKPOINT
+    title: Markpoint/Badmark 不在 BOM 中
+    severity: ignore
+    enabled: true
+
+  - id: PDF_ONLY_PIN_NAME
+    title: IC 引脚名或功能脚不在 BOM 中
+    severity: ignore
+    enabled: true
+
+  - id: DUPLICATE_STANDARD_REFDES
+    title: 同一位号出现在多个标准件 BOM 行
+    severity: error
+    enabled: true
+
+  - id: ALT_PART_SAME_REFDES
+    title: 同一位号存在标准件和替代件
+    severity: info
+    enabled: true
+
+  - id: VALUE_MISMATCH
+    title: BOM 与 PDF 器件关键值不一致
+    severity: warning
+    enabled: true
+
+  - id: CRITICAL_TVS_MISMATCH
+    title: TVS 型号或 VRWM 与 PDF 不一致
+    severity: error
+    enabled: true
+
+  - id: TYPEC_CC_CHECK
+    title: Type-C CC 下拉电阻检查
+    severity: warning
+    enabled: true
+
+  - id: VBUS_TVS_REVIEW
+    title: VBUS TVS 规格复核
+    severity: warning
+    enabled: true
