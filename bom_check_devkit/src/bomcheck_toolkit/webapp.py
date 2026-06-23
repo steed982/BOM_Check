@@ -1364,6 +1364,16 @@ APP_HTML = r"""<!doctype html>
       progressBar.style.width = "0";
     }
 
+    function parseUploadResponse(xhr) {
+      const text = xhr.responseText || "";
+      try {
+        return JSON.parse(text);
+      } catch {
+        const detail = text.trim().slice(0, 140) || `HTTP ${xhr.status}`;
+        throw new Error(`上传接口返回非 JSON：${detail}。请确认使用服务地址 http://192.168.28.110:8088，并刷新页面后重试。`);
+      }
+    }
+
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       formError.textContent = "";
@@ -1381,7 +1391,7 @@ APP_HTML = r"""<!doctype html>
       };
       xhr.onload = () => {
         try {
-          const response = JSON.parse(xhr.responseText);
+          const response = parseUploadResponse(xhr);
           if (xhr.status < 200 || xhr.status >= 300) {
             throw new Error(response.error || "上传失败");
           }
@@ -1969,7 +1979,7 @@ APP_HTML = r"""<!doctype html>
     <header class="topbar">
       <div>
         <h1>BOM Check</h1>
-        <div class="subtitle">任务中心</div>
+        <div class="subtitle">任务中心 · <span id="serviceHost"></span></div>
       </div>
       <div class="top-actions">
         <a class="btn" href="/" target="_blank" rel="noopener">新窗口</a>
@@ -2023,6 +2033,8 @@ APP_HTML = r"""<!doctype html>
     const jobsPanel = document.getElementById("jobs");
     const healthTime = document.getElementById("healthTime");
     const jobCount = document.getElementById("jobCount");
+    const serviceHost = document.getElementById("serviceHost");
+    serviceHost.textContent = location.host;
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -2036,6 +2048,26 @@ APP_HTML = r"""<!doctype html>
     function setNotice(text, isError = false) {
       notice.textContent = text || "";
       notice.className = "notice" + (isError ? " error" : "");
+    }
+
+    async function readJson(response, label) {
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        const detail = text.trim().slice(0, 140) || `HTTP ${response.status}`;
+        throw new Error(`${label} 返回非 JSON：${detail}。请确认地址栏是 http://192.168.28.110:8088，并刷新页面后重试。`);
+      }
+    }
+
+    function parseUploadResponse(xhr) {
+      const text = xhr.responseText || "";
+      try {
+        return JSON.parse(text);
+      } catch {
+        const detail = text.trim().slice(0, 140) || `HTTP ${xhr.status}`;
+        throw new Error(`上传接口返回非 JSON：${detail}。请确认地址栏是 http://192.168.28.110:8088，并刷新页面后重试。`);
+      }
     }
 
     function queueMetric(label, value) {
@@ -2117,8 +2149,8 @@ APP_HTML = r"""<!doctype html>
         fetch("/health", { cache: "no-store" }),
         fetch("/api/jobs", { cache: "no-store" }),
       ]);
-      const health = await healthResponse.json();
-      const jobData = await jobsResponse.json();
+      const health = await readJson(healthResponse, "队列接口");
+      const jobData = await readJson(jobsResponse, "任务接口");
       if (!healthResponse.ok) throw new Error(health.error || "读取队列失败");
       if (!jobsResponse.ok) throw new Error(jobData.error || "读取任务失败");
       const jobs = jobData.jobs || [];
@@ -2142,7 +2174,7 @@ APP_HTML = r"""<!doctype html>
       };
       xhr.onload = () => {
         try {
-          const response = JSON.parse(xhr.responseText);
+          const response = parseUploadResponse(xhr);
           if (xhr.status < 200 || xhr.status >= 300) {
             throw new Error(response.error || "上传失败");
           }
