@@ -18,7 +18,7 @@ from email.parser import BytesParser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
 import fitz
@@ -34,6 +34,7 @@ OUTPUT_FILES = [
     ("bom_parsed.json", "BOM 解析 JSON", "json"),
     ("refdes_extracted.json", "PDF 位号 JSON", "json"),
 ]
+DEFAULT_PUBLIC_BASE_URL = "http://192.168.28.110:8088"
 
 
 @dataclass(slots=True)
@@ -281,6 +282,15 @@ class BomCheckHandler(BaseHTTPRequestHandler):
         self.close_connection = True
         super().end_headers()
 
+    def public_base_url(self) -> str:
+        host = (self.headers.get("X-Forwarded-Host") or self.headers.get("Host") or "").split(",")[0].strip()
+        if not host:
+            return DEFAULT_PUBLIC_BASE_URL
+        proto = (self.headers.get("X-Forwarded-Proto") or "http").split(",")[0].strip().lower()
+        if not re.match(r"^[a-z][a-z0-9+.-]*$", proto):
+            proto = "http"
+        return f"{proto}://{host}"
+
     def handle_create_job(self) -> None:
         content_length = self.headers.get("Content-Length")
         if not content_length:
@@ -433,7 +443,7 @@ class BomCheckHandler(BaseHTTPRequestHandler):
         if not job:
             self.send_error_json(HTTPStatus.NOT_FOUND, "任务不存在")
             return
-        self.send_html(build_detail_html(self.server.job_public(job)), include_body=include_body)
+        self.send_html(build_detail_html(self.server.job_public(job), base_url=self.public_base_url()), include_body=include_body)
 
     def handle_report_page(
         self,
@@ -445,7 +455,7 @@ class BomCheckHandler(BaseHTTPRequestHandler):
         if not job:
             self.send_error_json(HTTPStatus.NOT_FOUND, "任务不存在")
             return
-        content = build_report_html(self.server.job_public(job)).encode("utf-8")
+        content = build_report_html(self.server.job_public(job), base_url=self.public_base_url()).encode("utf-8")
         download = query.get("download", ["0"])[0] == "1"
         disposition = "attachment" if download else "inline"
         self.send_binary(
@@ -466,7 +476,11 @@ class BomCheckHandler(BaseHTTPRequestHandler):
             self.send_error_json(HTTPStatus.CONFLICT, "任务尚未完成，不能打包下载")
             return
         try:
-            content = build_bundle_zip(self.server.job_public(job), Path(job["outdir"]))
+            content = build_bundle_zip(
+                self.server.job_public(job),
+                Path(job["outdir"]),
+                base_url=self.public_base_url(),
+            )
         except Exception as exc:  # pragma: no cover - defensive archive guard
             self.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, f"生成打包文件失败: {exc}")
             return
@@ -1467,7 +1481,29 @@ def find_output_file(job: dict[str, Any], *, name: str | None = None, kind: str 
     return None
 
 
-def build_report_html(job: dict[str, Any]) -> str:
+def absolute_public_url(url: str, base_url: str = "") -> str:
+    if not url:
+        return ""
+    parsed = urlparse(url)
+    if parsed.scheme and parsed.netloc:
+        return url
+    if url.startswith("//"):
+        return f"http:{url}"
+    normalized_base = (base_url or "").rstrip("/")
+    if not normalized_base:
+        return url
+    if url.startswith("/"):
+        return f"{normalized_base}{url}"
+    return f"{normalized_base}/{url}"
+
+
+def build_report_html(
+    job: dict[str, Any],
+    *,
+    base_url: str = "",
+    detail_url: str | None = None,
+    file_url_resolver: Callable[[dict[str, Any]], str] | None = None,
+) -> str:
     job_id = str(job.get("id", ""))
     summary = job.get("summary") or {}
     issue_counts = summary.get("issue_counts") or {}
@@ -1479,14 +1515,25 @@ def build_report_html(job: dict[str, Any]) -> str:
     files = job.get("files") or []
     pdf_file = find_output_file(job, kind="pdf")
 
+    def output_url(file_info: dict[str, Any]) -> str:
+        if file_url_resolver:
+            return file_url_resolver(file_info)
+        return absolute_public_url(file_info.get("download_url", ""), base_url)
+
     action_links = [
-        (f"/jobs/{quote(job_id)}/detail", "查看明细"),
-        (f"/jobs/{quote(job_id)}/bundle.zip", "打包下载"),
-        (f"/jobs/{quote(job_id)}/excel.zip", "下载 Excel"),
+        (detail_url or absolute_public_url(f"/jobs/{quote(job_id)}/detail", base_url), "查看明细"),
+        (absolute_public_url(f"/jobs/{quote(job_id)}/bundle.zip", base_url), "打包下载"),
+        (absolute_public_url(f"/jobs/{quote(job_id)}/excel.zip", base_url), "下载 Excel"),
     ]
     if pdf_file:
-        action_links.append((pdf_file.get("download_url", ""), "下载 PDF"))
-    action_links.extend((file_info.get("download_url", ""), file_info.get("label", file_info.get("name", ""))) for file_info in files)
+        action_links.append((output_url(pdf_file), "下载 PDF"))
+    action_links.extend(
+        (
+            output_url(file_info),
+            file_info.get("label", file_info.get("name", "")),
+        )
+        for file_info in files
+    )
     actions_html = "".join(
         f'<a href="{html_escape(url)}">{html_escape(label)}</a>'
         for url, label in action_links
@@ -1623,10 +1670,23 @@ def build_excel_zip(outdir: Path) -> bytes:
     return buffer.getvalue()
 
 
-def build_bundle_zip(job: dict[str, Any], outdir: Path) -> bytes:
+def build_bundle_zip(job: dict[str, Any], outdir: Path, *, base_url: str = "") -> bytes:
+    def bundle_file_url(file_info: dict[str, Any]) -> str:
+        filename = Path(str(file_info.get("name") or "")).name
+        return f"outputs/{quote(filename)}" if filename else ""
+
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("report.html", build_report_html(job))
+        archive.writestr(
+            "report.html",
+            build_report_html(
+                job,
+                base_url=base_url,
+                detail_url="detail.html",
+                file_url_resolver=bundle_file_url,
+            ),
+        )
+        archive.writestr("detail.html", build_detail_html(job, base_url=base_url))
         archive.writestr(
             "job_summary.json",
             json.dumps(job, ensure_ascii=False, indent=2, default=json_default),
@@ -1744,6 +1804,7 @@ DETAIL_HTML = r"""<!doctype html>
   </main>
   <script>
     const job = __JOB_JSON__;
+    const publicBaseUrl = __PUBLIC_BASE_URL__;
     const issues = job.previews?.issues || {};
     const headers = issues.headers || [];
     const rows = issues.rows || [];
@@ -1756,6 +1817,13 @@ DETAIL_HTML = r"""<!doctype html>
     const pdfButton = document.getElementById("pdfButton");
     let selectedIndex = Math.max(0, targets.findIndex((target) => target?.has_location));
     let filterText = "";
+
+    function absoluteUrl(url) {
+      if (!url || /^(https?:|file:)/i.test(url)) return url || "";
+      if (!publicBaseUrl) return url;
+      const base = publicBaseUrl.replace(/\/+$/, "");
+      return url.startsWith("/") ? `${base}${url}` : `${base}/${url}`;
+    }
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -1779,13 +1847,13 @@ DETAIL_HTML = r"""<!doctype html>
     function actionLinks() {
       const id = encodeURIComponent(job.id);
       const links = [
-        { label: "任务中心", href: "/", primary: false },
-        { label: "打包下载", href: `/jobs/${id}/bundle.zip`, primary: true },
-        { label: "下载页面", href: `/jobs/${id}/report.html?download=1`, primary: false },
-        { label: "下载 Excel", href: `/jobs/${id}/excel.zip`, primary: false },
+        { label: "任务中心", href: absoluteUrl("/"), primary: false },
+        { label: "打包下载", href: absoluteUrl(`/jobs/${id}/bundle.zip`), primary: true },
+        { label: "下载页面", href: absoluteUrl(`/jobs/${id}/report.html?download=1`), primary: false },
+        { label: "下载 Excel", href: absoluteUrl(`/jobs/${id}/excel.zip`), primary: false },
       ];
       if (pdfFile) {
-        links.push({ label: "下载 PDF", href: pdfFile.download_url, primary: false });
+        links.push({ label: "下载 PDF", href: absoluteUrl(pdfFile.download_url), primary: false });
       }
       document.getElementById("actions").innerHTML = links.map((link) =>
         `<a class="btn ${link.primary ? "primary" : ""}" href="${link.href}">${escapeHtml(link.label)}</a>`
@@ -1875,9 +1943,10 @@ DETAIL_HTML = r"""<!doctype html>
         return;
       }
       pdfButton.style.display = "";
+      const pdfHref = absoluteUrl(pdfFile.url);
       pdfButton.href = target.has_location && target.page
-        ? `${pdfFile.url}#page=${target.page}&view=FitH`
-        : pdfFile.url;
+        ? `${pdfHref}#page=${target.page}&view=FitH`
+        : pdfHref;
       if (!target.has_location) {
         viewer.innerHTML = `
           <div class="empty">该异常没有 PDF 坐标</div>
@@ -1890,7 +1959,7 @@ DETAIL_HTML = r"""<!doctype html>
         return;
       }
       const bbox = encodeURIComponent(target.bbox.join(","));
-      const src = `/jobs/${encodeURIComponent(job.id)}/locate.png?page_index=${target.page_index}&bbox=${bbox}&t=${Date.now()}`;
+      const src = absoluteUrl(`/jobs/${encodeURIComponent(job.id)}/locate.png?page_index=${target.page_index}&bbox=${bbox}&t=${Date.now()}`);
       viewer.innerHTML = `
         <div class="locator-head">
           <div>
@@ -1922,8 +1991,12 @@ DETAIL_HTML = r"""<!doctype html>
 """
 
 
-def build_detail_html(job: dict[str, Any]) -> str:
-    return DETAIL_HTML.replace("__JOB_JSON__", json_for_script(job))
+def build_detail_html(job: dict[str, Any], *, base_url: str = "") -> str:
+    return (
+        DETAIL_HTML
+        .replace("__JOB_JSON__", json_for_script(job))
+        .replace("__PUBLIC_BASE_URL__", json_for_script(base_url))
+    )
 
 
 APP_HTML = r"""<!doctype html>
