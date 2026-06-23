@@ -110,6 +110,11 @@ def workbook_preview(path: Path, *, max_rows: int = 80, max_cols: int = 12) -> d
 
 
 class BomCheckServer(ThreadingHTTPServer):
+    daemon_threads = True
+    block_on_close = False
+    allow_reuse_address = True
+    request_queue_size = 64
+
     def __init__(
         self,
         server_address: tuple[str, int],
@@ -266,6 +271,15 @@ class BomCheckHandler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt: str, *args: Any) -> None:
         print(f"{self.address_string()} - {fmt % args}")
+
+    def setup(self) -> None:
+        super().setup()
+        self.request.settimeout(120)
+
+    def end_headers(self) -> None:
+        self.send_header("Connection", "close")
+        self.close_connection = True
+        super().end_headers()
 
     def handle_create_job(self) -> None:
         content_length = self.headers.get("Content-Length")
@@ -2053,6 +2067,8 @@ APP_HTML = r"""<!doctype html>
     const serviceHost = document.getElementById("serviceHost");
     const openWindowLink = document.getElementById("openWindowLink");
     let apiBase = "";
+    let refreshInFlight = false;
+    let refreshTimer = null;
     serviceHost.textContent = "检测中";
 
     function normalizeApiBase(base) {
@@ -2080,6 +2096,16 @@ APP_HTML = r"""<!doctype html>
     function updateApiDisplay() {
       serviceHost.textContent = apiHostLabel();
       openWindowLink.href = apiUrl("/");
+    }
+
+    async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...options, signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
     }
 
     function escapeHtml(value) {
@@ -2117,7 +2143,7 @@ APP_HTML = r"""<!doctype html>
     }
 
     async function probeApiBase(base) {
-      const response = await fetch(`${base}/health`, { cache: "no-store" });
+      const response = await fetchWithTimeout(`${base}/health`, { cache: "no-store" }, 5000);
       const data = await readJson(response, "队列接口");
       if (!response.ok || !data.ok) {
         throw new Error(data.error || "健康检查失败");
@@ -2222,9 +2248,14 @@ APP_HTML = r"""<!doctype html>
     }
 
     async function refreshAll() {
+      if (refreshInFlight) {
+        return false;
+      }
+      refreshInFlight = true;
+      try {
       const [healthResponse, jobsResponse] = await Promise.all([
-        fetch(apiUrl("/health"), { cache: "no-store" }),
-        fetch(apiUrl("/api/jobs"), { cache: "no-store" }),
+        fetchWithTimeout(apiUrl("/health"), { cache: "no-store" }, 8000),
+        fetchWithTimeout(apiUrl("/api/jobs"), { cache: "no-store" }, 8000),
       ]);
       const health = await readJson(healthResponse, "队列接口");
       const jobData = await readJson(jobsResponse, "任务接口");
@@ -2234,6 +2265,10 @@ APP_HTML = r"""<!doctype html>
       renderQueue(health, jobs);
       jobCount.textContent = jobs.length ? `${jobs.length} 个` : "";
       jobsPanel.innerHTML = jobs.length ? jobs.map(renderJob).join("") : `<div class="empty">暂无任务</div>`;
+      return jobs.some((job) => job.status === "queued" || job.status === "running");
+      } finally {
+        refreshInFlight = false;
+      }
     }
 
     form.addEventListener("submit", (event) => {
@@ -2244,6 +2279,7 @@ APP_HTML = r"""<!doctype html>
       const data = new FormData(form);
       const xhr = new XMLHttpRequest();
       xhr.open("POST", apiUrl("/api/jobs"));
+      xhr.timeout = 120000;
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
           progressBar.style.width = `${Math.round((event.loaded / event.total) * 100)}%`;
@@ -2270,16 +2306,37 @@ APP_HTML = r"""<!doctype html>
         runButton.disabled = false;
         progressBar.style.width = "0";
       };
+      xhr.ontimeout = () => {
+        setNotice("上传接口响应超时，请刷新后查看任务是否已进入队列。", true);
+        runButton.disabled = false;
+        progressBar.style.width = "0";
+      };
       xhr.send(data);
     });
 
-    refreshButton.addEventListener("click", () => refreshAll().catch((error) => setNotice(error.message, true)));
+    function scheduleRefresh(hasActiveJobs = false) {
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(async () => {
+        try {
+          const active = await refreshAll();
+          scheduleRefresh(active);
+        } catch {
+          scheduleRefresh(false);
+        }
+      }, hasActiveJobs ? 2000 : 5000);
+    }
+
+    refreshButton.addEventListener("click", () => {
+      refreshAll()
+        .then((active) => scheduleRefresh(active))
+        .catch((error) => setNotice(error.message, true));
+    });
 
     async function boot() {
       apiBase = await detectApiBase();
       updateApiDisplay();
-      await refreshAll();
-      setInterval(() => refreshAll().catch(() => {}), 2000);
+      const active = await refreshAll();
+      scheduleRefresh(active);
     }
 
     boot().catch((error) => {
