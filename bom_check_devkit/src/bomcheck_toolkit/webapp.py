@@ -258,6 +258,12 @@ class BomCheckHandler(BaseHTTPRequestHandler):
             return
         self.send_error_json(HTTPStatus.NOT_FOUND, "未找到该地址")
 
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        self.send_response(HTTPStatus.NO_CONTENT)
+        self.send_cors_headers()
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def log_message(self, fmt: str, *args: Any) -> None:
         print(f"{self.address_string()} - {fmt % args}")
 
@@ -403,6 +409,7 @@ class BomCheckHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(content)))
         self.send_header("Content-Disposition", f"{disposition}; filename*=UTF-8''{encoded_name}")
         self.send_header("Cache-Control", "private, max-age=3600")
+        self.send_cors_headers()
         self.end_headers()
         if include_body:
             self.wfile.write(content)
@@ -521,9 +528,16 @@ class BomCheckHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "image/png")
         self.send_header("Content-Length", str(len(content)))
         self.send_header("Cache-Control", "no-store")
+        self.send_cors_headers()
         self.end_headers()
         if include_body:
             self.wfile.write(content)
+
+    def send_cors_headers(self) -> None:
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, HEAD, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Max-Age", "600")
 
     def send_binary(
         self,
@@ -543,6 +557,7 @@ class BomCheckHandler(BaseHTTPRequestHandler):
             encoded_name = quote(filename)
             self.send_header("Content-Disposition", f"{disposition}; filename*=UTF-8''{encoded_name}")
         self.send_header("Cache-Control", cache_control)
+        self.send_cors_headers()
         self.end_headers()
         if include_body:
             self.wfile.write(content)
@@ -559,6 +574,7 @@ class BomCheckHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(content)))
         self.send_header("Cache-Control", "no-store")
+        self.send_cors_headers()
         self.end_headers()
         if include_body:
             self.wfile.write(content)
@@ -569,6 +585,7 @@ class BomCheckHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(content)))
         self.send_header("Cache-Control", "no-store")
+        self.send_cors_headers()
         self.end_headers()
         self.wfile.write(content)
 
@@ -1982,7 +1999,7 @@ APP_HTML = r"""<!doctype html>
         <div class="subtitle">任务中心 · <span id="serviceHost"></span></div>
       </div>
       <div class="top-actions">
-        <a class="btn" href="/" target="_blank" rel="noopener">新窗口</a>
+        <a id="openWindowLink" class="btn" href="/" target="_blank" rel="noopener">新窗口</a>
         <button id="refreshButton" class="btn" type="button">刷新</button>
       </div>
     </header>
@@ -2034,7 +2051,36 @@ APP_HTML = r"""<!doctype html>
     const healthTime = document.getElementById("healthTime");
     const jobCount = document.getElementById("jobCount");
     const serviceHost = document.getElementById("serviceHost");
-    serviceHost.textContent = location.host;
+    const openWindowLink = document.getElementById("openWindowLink");
+    let apiBase = "";
+    serviceHost.textContent = "检测中";
+
+    function normalizeApiBase(base) {
+      return String(base || "").replace(/\/+$/, "");
+    }
+
+    function sameHostApiBase() {
+      if (!location.hostname) return "";
+      return `${location.protocol}//${location.hostname}:8088`;
+    }
+
+    function apiUrl(path) {
+      return `${apiBase}${path}`;
+    }
+
+    function assetUrl(url) {
+      if (!url || /^https?:\/\//i.test(url)) return url || "";
+      return apiUrl(url);
+    }
+
+    function apiHostLabel() {
+      return apiBase ? apiBase.replace(/^https?:\/\//, "") : location.host;
+    }
+
+    function updateApiDisplay() {
+      serviceHost.textContent = apiHostLabel();
+      openWindowLink.href = apiUrl("/");
+    }
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -2070,6 +2116,37 @@ APP_HTML = r"""<!doctype html>
       }
     }
 
+    async function probeApiBase(base) {
+      const response = await fetch(`${base}/health`, { cache: "no-store" });
+      const data = await readJson(response, "队列接口");
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "健康检查失败");
+      }
+      return true;
+    }
+
+    async function detectApiBase() {
+      const params = new URLSearchParams(location.search);
+      const explicit = params.get("api_base") || params.get("apiBase");
+      const candidates = [
+        explicit,
+        "",
+        sameHostApiBase(),
+        "http://192.168.28.110:8088",
+      ].map(normalizeApiBase);
+      const uniqueCandidates = [...new Set(candidates)];
+      const errors = [];
+      for (const candidate of uniqueCandidates) {
+        try {
+          await probeApiBase(candidate);
+          return candidate;
+        } catch (error) {
+          errors.push(`${candidate || location.origin}: ${error.message || error}`);
+        }
+      }
+      throw new Error(`找不到 BOM Check API。已尝试：${errors.join("；")}`);
+    }
+
     function queueMetric(label, value) {
       return `<div class="queue-item"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>`;
     }
@@ -2091,12 +2168,12 @@ APP_HTML = r"""<!doctype html>
       const id = encodeURIComponent(job.id);
       const pdf = (job.files || []).find((file) => file.kind === "pdf");
       const links = [
-        { label: "查看明细", href: `/jobs/${id}/detail`, cls: "primary", target: "_blank" },
-        { label: "打包下载", href: `/jobs/${id}/bundle.zip`, cls: "" },
-        { label: "下载页面", href: `/jobs/${id}/report.html?download=1`, cls: "" },
-        { label: "下载 Excel", href: `/jobs/${id}/excel.zip`, cls: "" },
+        { label: "查看明细", href: apiUrl(`/jobs/${id}/detail`), cls: "primary", target: "_blank" },
+        { label: "打包下载", href: apiUrl(`/jobs/${id}/bundle.zip`), cls: "" },
+        { label: "下载页面", href: apiUrl(`/jobs/${id}/report.html?download=1`), cls: "" },
+        { label: "下载 Excel", href: apiUrl(`/jobs/${id}/excel.zip`), cls: "" },
       ];
-      if (pdf) links.push({ label: "下载 PDF", href: pdf.download_url, cls: "" });
+      if (pdf) links.push({ label: "下载 PDF", href: assetUrl(pdf.download_url), cls: "" });
       return `<div class="job-actions">${links.map((link) =>
         `<a class="btn ${link.cls}" href="${link.href}" ${link.target ? `target="${link.target}" rel="noopener"` : ""}>${escapeHtml(link.label)}</a>`
       ).join("")}</div>`;
@@ -2146,8 +2223,8 @@ APP_HTML = r"""<!doctype html>
 
     async function refreshAll() {
       const [healthResponse, jobsResponse] = await Promise.all([
-        fetch("/health", { cache: "no-store" }),
-        fetch("/api/jobs", { cache: "no-store" }),
+        fetch(apiUrl("/health"), { cache: "no-store" }),
+        fetch(apiUrl("/api/jobs"), { cache: "no-store" }),
       ]);
       const health = await readJson(healthResponse, "队列接口");
       const jobData = await readJson(jobsResponse, "任务接口");
@@ -2166,7 +2243,7 @@ APP_HTML = r"""<!doctype html>
       progressBar.style.width = "0";
       const data = new FormData(form);
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/jobs");
+      xhr.open("POST", apiUrl("/api/jobs"));
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
           progressBar.style.width = `${Math.round((event.loaded / event.total) * 100)}%`;
@@ -2197,8 +2274,18 @@ APP_HTML = r"""<!doctype html>
     });
 
     refreshButton.addEventListener("click", () => refreshAll().catch((error) => setNotice(error.message, true)));
-    refreshAll().catch((error) => setNotice(error.message, true));
-    setInterval(() => refreshAll().catch(() => {}), 2000);
+
+    async function boot() {
+      apiBase = await detectApiBase();
+      updateApiDisplay();
+      await refreshAll();
+      setInterval(() => refreshAll().catch(() => {}), 2000);
+    }
+
+    boot().catch((error) => {
+      serviceHost.textContent = "未连接";
+      setNotice(error.message || String(error), true);
+    });
   </script>
 </body>
 </html>
